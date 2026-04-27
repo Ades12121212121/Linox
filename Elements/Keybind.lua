@@ -7,19 +7,18 @@ Keybind.__index = Keybind
 
 function Keybind.new(groupbox, options)
     options = options or {}
-    local KeyName = options.Text or "Keybind"
-    local Default = options.Default or Enum.KeyCode.Unknown
-    local Callback = options.Callback or function() end
-    local theme = ThemeManager:GetTheme()
+    local keyName = options.Text or "Keybind"
+    local default = options.Default or Enum.KeyCode.Unknown
+    local callback = options.Callback or function() end
     
     local self = setmetatable({
-        Value = Default
+        Value = default
     }, Keybind)
     
     self.Frame = Utility:Create("Frame", {
-        Name = KeyName .. "Keybind",
+        Name = keyName .. "Keybind",
         Parent = groupbox.ElementContainer,
-        Size = UDim2.new(1, 0, 0, 20),
+        Size = UDim2.new(1, 0, 0, 24),
         BackgroundTransparency = 1
     })
     
@@ -28,9 +27,7 @@ function Keybind.new(groupbox, options)
         Parent = self.Frame,
         Size = UDim2.new(1, -60, 1, 0),
         BackgroundTransparency = 1,
-        Text = KeyName,
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = keyName,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left
     })
@@ -38,25 +35,32 @@ function Keybind.new(groupbox, options)
     self.Button = Utility:Create("TextButton", {
         Name = "Button",
         Parent = self.Frame,
-        Size = UDim2.new(0, 50, 1, 0),
-        Position = UDim2.new(1, -50, 0, 0),
-        BackgroundColor3 = theme.MainColor,
+        Size = UDim2.new(0, 68, 1, 0),
+        Position = UDim2.new(1, -68, 0, 0),
         BorderSizePixel = 0,
-        Text = (Default == Enum.KeyCode.Unknown) and "None" or Default.Name,
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = (default == Enum.KeyCode.Unknown) and "None" or default.Name,
         TextSize = 12,
         AutoButtonColor = false
     })
-    Utility:ApplyCorners(self.Button, UDim.new(0, 4))
-    Utility:ApplyStroke(self.Button)
     
     local binding = false
+
+    local function refresh(theme)
+        self.Label.TextColor3 = theme.TextColor
+        self.Label.Font = theme.Font
+        self.Button.BackgroundColor3 = binding and theme.SecondaryColor or theme.MainColor
+        self.Button.TextColor3 = binding and theme.AccentColor or theme.TextColor
+        self.Button.Font = theme.Font
+        Utility:ApplyCorners(self.Button, theme.ElementRadius)
+        Utility:ApplyStroke(self.Button, binding and theme.AccentColor or theme.SoftOutlineColor)
+    end
+
+    Utility:RegisterTheme(self.Frame, refresh)
     
     self.Button.MouseButton1Click:Connect(function()
         binding = true
         self.Button.Text = "..."
-        self.Button.TextColor3 = theme.AccentColor
+        refresh(ThemeManager:GetTheme())
     end)
     
     UserInputService.InputBegan:Connect(function(input)
@@ -68,21 +72,23 @@ function Keybind.new(groupbox, options)
                 end
                 self.Value = key
                 self.Button.Text = (key == Enum.KeyCode.Unknown) and "None" or key.Name
-                self.Button.TextColor3 = theme.TextColor
                 binding = false
-                Callback(key)
+                refresh(ThemeManager:GetTheme())
+                callback(key)
             elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
                 local key = input.UserInputType
                 self.Value = key
                 self.Button.Text = key.Name
-                self.Button.TextColor3 = theme.TextColor
                 binding = false
-                Callback(key)
+                refresh(ThemeManager:GetTheme())
+                callback(key)
             end
+        elseif self.Value == Enum.KeyCode.Unknown then
+            return
         elseif input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == self.Value then
-            Callback(self.Value)
+            callback(self.Value)
         elseif (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2) and input.UserInputType == self.Value then
-            Callback(self.Value)
+            callback(self.Value)
         end
     end)
     

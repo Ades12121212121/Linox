@@ -6,18 +6,31 @@ Dropdown.__index = Dropdown
 
 function Dropdown.new(groupbox, options)
     options = options or {}
-    local DropName = options.Text or "Dropdown"
-    local Values = options.Values or {}
-    local Default = options.Default or 1
-    local Callback = options.Callback or function() end
-    local theme = ThemeManager:GetTheme()
+    local dropName = options.Text or "Dropdown"
+    local values = options.Values or {}
+    local default = options.Default or 1
+    local callback = options.Callback or function() end
+
+    local function resolveDefault()
+        if typeof(default) == "number" then
+            return values[default]
+        end
+
+        for _, value in ipairs(values) do
+            if value == default then
+                return value
+            end
+        end
+
+        return values[1]
+    end
     
     local self = setmetatable({
-        Value = Values[Default]
+        Value = resolveDefault()
     }, Dropdown)
     
     self.Frame = Utility:Create("Frame", {
-        Name = DropName .. "Dropdown",
+        Name = dropName .. "Dropdown",
         Parent = groupbox.ElementContainer,
         Size = UDim2.new(1, 0, 0, 45),
         BackgroundTransparency = 1
@@ -28,9 +41,7 @@ function Dropdown.new(groupbox, options)
         Parent = self.Frame,
         Size = UDim2.new(1, 0, 0, 15),
         BackgroundTransparency = 1,
-        Text = DropName,
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = dropName,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left
     })
@@ -40,11 +51,8 @@ function Dropdown.new(groupbox, options)
         Parent = self.Frame,
         Size = UDim2.new(1, 0, 0, 25),
         Position = UDim2.fromOffset(0, 20),
-        BackgroundColor3 = theme.MainColor,
         BorderSizePixel = 0,
-        Text = "  " .. tostring(self.Value),
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = "  " .. tostring(self.Value or "None"),
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
         AutoButtonColor = false
@@ -59,8 +67,6 @@ function Dropdown.new(groupbox, options)
         Position = UDim2.new(1, -25, 0, 0),
         BackgroundTransparency = 1,
         Text = "v",
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
         TextSize = 13
     })
     
@@ -69,15 +75,12 @@ function Dropdown.new(groupbox, options)
         Parent = self.Frame,
         Size = UDim2.new(1, 0, 0, 0),
         Position = UDim2.fromOffset(0, 50),
-        BackgroundColor3 = theme.MainColor,
         BorderSizePixel = 0,
         ScrollBarThickness = 2,
         Visible = false,
         ZIndex = 5,
-        ScrollBarImageColor3 = theme.AccentColor
+        ClipsDescendants = true
     })
-    Utility:ApplyCorners(self.List, UDim.new(0, 4))
-    Utility:ApplyStroke(self.List)
     
     self.ListLayout = Utility:Create("UIListLayout", {
         Parent = self.List,
@@ -85,13 +88,50 @@ function Dropdown.new(groupbox, options)
     })
     
     local Open = false
+
+    local function refresh(theme)
+        self.Label.TextColor3 = theme.TextColor
+        self.Label.Font = theme.Font
+        self.Button.BackgroundColor3 = theme.MainColor
+        self.Button.TextColor3 = self.Value and theme.TextColor or theme.DisabledTextColor
+        self.Button.Font = theme.Font
+        self.Icon.TextColor3 = theme.TextColor
+        self.Icon.Font = theme.Font
+        self.List.BackgroundColor3 = theme.MainColor
+        self.List.ScrollBarImageColor3 = theme.AccentColor
+        Utility:ApplyCorners(self.Button, theme.ElementRadius)
+        Utility:ApplyCorners(self.List, theme.ElementRadius)
+        Utility:ApplyStroke(self.Button, theme.SoftOutlineColor)
+        Utility:ApplyStroke(self.List, theme.OutlineColor)
+    end
+
+    Utility:RegisterTheme(self.Frame, refresh)
     
     local function UpdateList()
         for _, child in pairs(self.List:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
+
+        local theme = ThemeManager:GetTheme()
         
-        for i, val in ipairs(Values) do
+        if #values == 0 then
+            local Empty = Utility:Create("TextButton", {
+                Name = "Empty",
+                Parent = self.List,
+                Size = UDim2.new(1, 0, 0, 25),
+                BackgroundTransparency = 1,
+                Text = "  No values",
+                TextColor3 = theme.DisabledTextColor,
+                Font = theme.Font,
+                TextSize = 13,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                ZIndex = 6,
+                AutoButtonColor = false
+            })
+            Empty.Active = false
+        end
+        
+        for i, val in ipairs(values) do
             local Item = Utility:Create("TextButton", {
                 Name = "Item" .. tostring(i),
                 Parent = self.List,
@@ -112,7 +152,8 @@ function Dropdown.new(groupbox, options)
                 self.List.Visible = false
                 self.Icon.Text = "v"
                 UpdateList()
-                Callback(val)
+                refresh(ThemeManager:GetTheme())
+                callback(val)
             end)
         end
         self.List.CanvasSize = UDim2.new(0, 0, 0, self.ListLayout.AbsoluteContentSize.Y)
@@ -122,7 +163,7 @@ function Dropdown.new(groupbox, options)
         Open = not Open
         if Open then
             UpdateList()
-            self.List.Size = UDim2.new(1, 0, 0, math.min(#Values * 25, 125))
+            self.List.Size = UDim2.new(1, 0, 0, math.min(math.max(#values, 1) * 25, 125))
             self.List.Visible = true
             self.Icon.Text = "^"
         else
@@ -133,9 +174,10 @@ function Dropdown.new(groupbox, options)
     
     function self:SetValue(val)
         self.Value = val
-        self.Button.Text = "  " .. tostring(val)
+        self.Button.Text = "  " .. tostring(val or "None")
         UpdateList()
-        Callback(val)
+        refresh(ThemeManager:GetTheme())
+        callback(val)
     end
     
     UpdateList()

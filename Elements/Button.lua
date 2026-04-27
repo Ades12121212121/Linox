@@ -6,40 +6,60 @@ Button.__index = Button
 
 function Button.new(groupbox, options)
     options = options or {}
-    local Text = options.Text or "Button"
-    local Callback = options.Callback or function() end
-    local theme = ThemeManager:GetTheme()
+    local text = options.Text or "Button"
+    local callback = options.Callback or function() end
     
     local self = setmetatable({}, Button)
     
     self.ButtonFrame = Utility:Create("TextButton", {
-        Name = Text .. "Button",
+        Name = text .. "Button",
         Parent = groupbox.ElementContainer,
         Size = UDim2.new(1, 0, 0, 28),
-        BackgroundColor3 = theme.MainColor,
         BorderSizePixel = 0,
-        Text = Text,
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = text,
         TextSize = 13,
         AutoButtonColor = false
     })
-    Utility:ApplyCorners(self.ButtonFrame, UDim.new(0, 4))
-    Utility:ApplyStroke(self.ButtonFrame)
+
+    local pressed = false
+    local hovered = false
+
+    local function refresh(theme)
+        self.ButtonFrame.BackgroundColor3 = pressed and theme.AccentColor or (hovered and theme.SecondaryColor or theme.MainColor)
+        self.ButtonFrame.TextColor3 = theme.TextColor
+        self.ButtonFrame.Font = theme.Font
+        Utility:ApplyCorners(self.ButtonFrame, theme.ElementRadius)
+        Utility:ApplyStroke(self.ButtonFrame, pressed and theme.AccentColor2 or theme.SoftOutlineColor)
+    end
+
+    Utility:RegisterTheme(self.ButtonFrame, refresh)
+
+    self.ButtonFrame.MouseEnter:Connect(function()
+        hovered = true
+        refresh(ThemeManager:GetTheme())
+    end)
+
+    self.ButtonFrame.MouseLeave:Connect(function()
+        hovered = false
+        pressed = false
+        refresh(ThemeManager:GetTheme())
+    end)
     
     self.ButtonFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            self.ButtonFrame.BackgroundColor3 = theme.AccentColor
+            pressed = true
+            refresh(ThemeManager:GetTheme())
         end
     end)
     
     self.ButtonFrame.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            self.ButtonFrame.BackgroundColor3 = theme.MainColor
+            pressed = false
+            refresh(ThemeManager:GetTheme())
         end
     end)
     
-    self.ButtonFrame.MouseButton1Click:Connect(Callback)
+    self.ButtonFrame.MouseButton1Click:Connect(callback)
     
     return self
 end

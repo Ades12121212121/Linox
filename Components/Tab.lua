@@ -7,25 +7,21 @@ Tab.__index = Tab
 
 function Tab.new(window, options)
     options = options or {}
-    local TabName = options.Name or "Tab"
-    local theme = ThemeManager:GetTheme()
+    local tabName = options.Name or "Tab"
     
     local self = setmetatable({
         Window = window,
-        Name = TabName,
+        Name = tabName,
         LeftGroupboxes = 0,
         RightGroupboxes = 0
     }, Tab)
     
     self.Button = Utility:Create("TextButton", {
-        Name = TabName .. "Button",
+        Name = tabName .. "Button",
         Parent = window.TabContainer,
         Size = UDim2.fromOffset(100, 35),
-        BackgroundColor3 = theme.MainColor,
         BorderSizePixel = 0,
-        Text = TabName,
-        TextColor3 = theme.DisabledTextColor,
-        Font = theme.Font,
+        Text = tabName,
         TextSize = 13,
         AutoButtonColor = false
     })
@@ -33,7 +29,7 @@ function Tab.new(window, options)
     Utility:ApplyStroke(self.Button)
 
     self.Content = Utility:Create("ScrollingFrame", {
-        Name = TabName .. "Content",
+        Name = tabName .. "Content",
         Parent = window.ContentContainer,
         Size = UDim2.new(1, -20, 1, -20),
         Position = UDim2.fromOffset(10, 10),
@@ -41,7 +37,6 @@ function Tab.new(window, options)
         ScrollBarThickness = 2,
         Visible = false,
         CanvasSize = UDim2.new(0, 0, 0, 0),
-        ScrollBarImageColor3 = theme.AccentColor,
         BorderSizePixel = 0
     })
     
@@ -63,24 +58,42 @@ function Tab.new(window, options)
     self.LeftLayout = Utility:Create("UIListLayout", { Parent = self.LeftColumn, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 10) })
     self.RightLayout = Utility:Create("UIListLayout", { Parent = self.RightColumn, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 10) })
 
-    self.Button.MouseButton1Click:Connect(function()
+    function self:Refresh(theme)
+        local selected = window.CurrentTab == self
+        self.Button.BackgroundColor3 = selected and theme.SecondaryColor or theme.MainColor
+        self.Button.TextColor3 = selected and theme.TextColor or theme.DisabledTextColor
+        self.Button.Font = theme.Font
+        self.Content.ScrollBarImageColor3 = theme.AccentColor
+        Utility:ApplyCorners(self.Button, theme.ElementRadius)
+        Utility:ApplyStroke(self.Button, selected and theme.AccentColor or theme.SoftOutlineColor)
+    end
+
+    local function selectTab()
         if window.CurrentTab then
-            window.CurrentTab.Button.TextColor3 = theme.DisabledTextColor
-            window.CurrentTab.Button.BackgroundColor3 = theme.MainColor
             window.CurrentTab.Content.Visible = false
+            window.CurrentTab:Refresh(ThemeManager:GetTheme())
         end
-        self.Button.TextColor3 = theme.TextColor
-        self.Button.BackgroundColor3 = theme.BackgroundColor
+
         self.Content.Visible = true
         window.CurrentTab = self
+
+        for _, tab in ipairs(window.Tabs) do
+            tab:Refresh(ThemeManager:GetTheme())
+        end
+        self:UpdateCanvas()
+    end
+
+    self.Button.MouseButton1Click:Connect(function()
+        selectTab()
     end)
 
     if not window.CurrentTab then
-        self.Button.TextColor3 = theme.TextColor
-        self.Button.BackgroundColor3 = theme.BackgroundColor
-        self.Content.Visible = true
-        window.CurrentTab = self
+        selectTab()
     end
+
+    Utility:RegisterTheme(self.Button, function(theme)
+        self:Refresh(theme)
+    end)
     
     return self
 end
@@ -92,7 +105,9 @@ function Tab:UpdateCanvas()
 end
 
 function Tab:AddGroupbox(options)
-    return GroupboxModule.new(self, options)
+    local groupbox = GroupboxModule.new(self, options)
+    self:UpdateCanvas()
+    return groupbox
 end
 
 return Tab

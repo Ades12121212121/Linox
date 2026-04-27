@@ -7,20 +7,24 @@ Slider.__index = Slider
 
 function Slider.new(groupbox, options)
     options = options or {}
-    local SliderName = options.Text or "Slider"
-    local Default = options.Default or 0
-    local Min = options.Min or 0
-    local Max = options.Max or 100
-    local Rounding = options.Rounding or 0
-    local Callback = options.Callback or function() end
-    local theme = ThemeManager:GetTheme()
+    local sliderName = options.Text or "Slider"
+    local min = options.Min or 0
+    local max = options.Max or 100
+    local rounding = options.Rounding or 0
+    local callback = options.Callback or function() end
+
+    if max < min then
+        min, max = max, min
+    end
+
+    local default = math.clamp(options.Default or min, min, max)
     
     local self = setmetatable({
-        Value = Default
+        Value = default
     }, Slider)
     
     self.Frame = Utility:Create("Frame", {
-        Name = SliderName .. "Slider",
+        Name = sliderName .. "Slider",
         Parent = groupbox.ElementContainer,
         Size = UDim2.new(1, 0, 0, 40),
         BackgroundTransparency = 1
@@ -31,9 +35,7 @@ function Slider.new(groupbox, options)
         Parent = self.Frame,
         Size = UDim2.new(1, 0, 0, 15),
         BackgroundTransparency = 1,
-        Text = SliderName,
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = sliderName,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left
     })
@@ -43,9 +45,7 @@ function Slider.new(groupbox, options)
         Parent = self.Frame,
         Size = UDim2.new(1, 0, 0, 15),
         BackgroundTransparency = 1,
-        Text = tostring(Default),
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = tostring(default),
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Right
     })
@@ -55,39 +55,64 @@ function Slider.new(groupbox, options)
         Parent = self.Frame,
         Size = UDim2.new(1, 0, 0, 12),
         Position = UDim2.fromOffset(0, 20),
-        BackgroundColor3 = theme.MainColor,
         BorderSizePixel = 0,
         Text = "",
         AutoButtonColor = false
     })
-    Utility:ApplyCorners(self.Background, UDim.new(0, 4))
-    Utility:ApplyStroke(self.Background)
     
     self.Fill = Utility:Create("Frame", {
         Name = "Fill",
         Parent = self.Background,
-        Size = UDim2.new((Default - Min) / (Max - Min), 0, 1, 0),
-        BackgroundColor3 = theme.AccentColor,
         BorderSizePixel = 0
     })
-    Utility:ApplyCorners(self.Fill, UDim.new(0, 4))
-    
-    local function UpdateSlider(input)
-        local percent = math.clamp((input.Position.X - self.Background.AbsolutePosition.X) / self.Background.AbsoluteSize.X, 0, 1)
-        local value = Min + ((Max - Min) * percent)
-        value = math.round(value * (10^Rounding)) / (10^Rounding)
-        
-        self.Value = value
+
+    local function rounded(value)
+        if rounding <= 0 then
+            return math.round(value)
+        end
+
+        local unit = 10 ^ rounding
+        return math.round(value * unit) / unit
+    end
+
+    local function percentFromValue(value)
+        if max == min then
+            return 0
+        end
+
+        return math.clamp((value - min) / (max - min), 0, 1)
+    end
+
+    local function refresh(theme)
+        local percent = percentFromValue(self.Value)
+        self.Label.TextColor3 = theme.TextColor
+        self.ValueLabel.TextColor3 = theme.TextColor
+        self.Label.Font = theme.Font
+        self.ValueLabel.Font = theme.Font
+        self.Background.BackgroundColor3 = theme.MainColor
+        self.Fill.BackgroundColor3 = theme.AccentColor
         self.Fill.Size = UDim2.new(percent, 0, 1, 0)
-        self.ValueLabel.Text = tostring(value)
-        Callback(value)
+        self.ValueLabel.Text = tostring(self.Value)
+        Utility:ApplyCorners(self.Background, theme.ElementRadius)
+        Utility:ApplyCorners(self.Fill, theme.ElementRadius)
+        Utility:ApplyStroke(self.Background, theme.SoftOutlineColor)
+        Utility:ApplyGradient(self.Fill, theme.AccentColor, theme.AccentColor2, 0)
+    end
+
+    Utility:RegisterTheme(self.Frame, refresh)
+    
+    local function updateSlider(input)
+        local width = self.Background.AbsoluteSize.X
+        local percent = width <= 0 and 0 or math.clamp((input.Position.X - self.Background.AbsolutePosition.X) / width, 0, 1)
+        local value = rounded(min + ((max - min) * percent))
+        self:SetValue(value)
     end
     
     local dragging = false
     self.Background.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
-            UpdateSlider(input)
+            updateSlider(input)
         end
     end)
     
@@ -99,17 +124,15 @@ function Slider.new(groupbox, options)
     
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            UpdateSlider(input)
+            updateSlider(input)
         end
     end)
     
     function self:SetValue(val)
-        val = math.clamp(val, Min, Max)
-        local percent = (val - Min) / (Max - Min)
+        val = rounded(math.clamp(val, min, max))
         self.Value = val
-        self.Fill.Size = UDim2.new(percent, 0, 1, 0)
-        self.ValueLabel.Text = tostring(val)
-        Callback(val)
+        refresh(ThemeManager:GetTheme())
+        callback(val)
     end
     
     return self

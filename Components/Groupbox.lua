@@ -13,45 +13,40 @@ Groupbox.__index = Groupbox
 
 function Groupbox.new(tab, options)
     options = options or {}
-    local GroupName = options.Name or "Groupbox"
-    local Side = string.lower(options.Side or "left")
-    local theme = ThemeManager:GetTheme()
+    local groupName = options.Name or "Groupbox"
+    local side = string.lower(options.Side or "left")
     
     local self = setmetatable({
         Tab = tab,
     }, Groupbox)
     
-    local ParentColumn = (Side == "left") and tab.LeftColumn or tab.RightColumn
+    local parentColumn = (side == "left") and tab.LeftColumn or tab.RightColumn
     
     self.Frame = Utility:Create("Frame", {
-        Name = GroupName,
-        Parent = ParentColumn,
+        Name = groupName,
+        Parent = parentColumn,
         Size = UDim2.new(1, 0, 0, 20),
-        BackgroundColor3 = theme.BackgroundColor,
         BorderSizePixel = 0
     })
     Utility:ApplyCorners(self.Frame)
     Utility:ApplyStroke(self.Frame)
     
-    local Title = Utility:Create("TextLabel", {
+    self.Title = Utility:Create("TextLabel", {
         Name = "Title",
         Parent = self.Frame,
         Size = UDim2.new(1, -16, 0, 25),
         Position = UDim2.fromOffset(8, 0),
         BackgroundTransparency = 1,
-        Text = GroupName,
-        TextColor3 = theme.TextColor,
-        Font = theme.Font,
+        Text = groupName,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left
     })
     
-    local TitleLine = Utility:Create("Frame", {
+    self.TitleLine = Utility:Create("Frame", {
         Name = "TitleLine",
         Parent = self.Frame,
         Size = UDim2.new(1, 0, 0, 1),
         Position = UDim2.fromOffset(0, 25),
-        BackgroundColor3 = theme.OutlineColor,
         BorderSizePixel = 0
     })
     
@@ -68,6 +63,15 @@ function Groupbox.new(tab, options)
         SortOrder = Enum.SortOrder.LayoutOrder,
         Padding = UDim.new(0, 8)
     })
+
+    Utility:RegisterTheme(self.Frame, function(theme)
+        self.Frame.BackgroundColor3 = theme.SurfaceColor
+        self.Title.TextColor3 = theme.TextColor
+        self.Title.Font = theme.Font
+        self.TitleLine.BackgroundColor3 = theme.SoftOutlineColor
+        Utility:ApplyCorners(self.Frame, theme.CornerRadius)
+        Utility:ApplyStroke(self.Frame, theme.SoftOutlineColor)
+    end)
     
     self.Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         self.Frame.Size = UDim2.new(1, 0, 0, self.Layout.AbsoluteContentSize.Y + 40)
