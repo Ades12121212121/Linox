@@ -167,6 +167,8 @@ function Dropdown.new(groupbox, options)
                 self.Value = val
                 self.Button.Text = "  " .. tostring(val)
                 Open = false
+                self.Frame.Size = UDim2.new(1, 0, 0, 45)
+                self.List.Size = UDim2.new(1, 0, 0, 0)
                 self.List.Visible = false
                 self.Icon.Text = "v"
                 UpdateList()
@@ -182,12 +184,15 @@ function Dropdown.new(groupbox, options)
         Open = not Open
         if Open then
             UpdateList()
+            local listHeight = math.min(math.max(#values, 1) * 25, 125)
             self.List.Visible = true
+            self.Frame.Size = UDim2.new(1, 0, 0, 55 + listHeight)
             Utility:Animate(owner, self.List, {
-                Size = UDim2.new(1, 0, 0, math.min(math.max(#values, 1) * 25, 125))
+                Size = UDim2.new(1, 0, 0, listHeight)
             }, 0.12)
             self.Icon.Text = "^"
         else
+            self.Frame.Size = UDim2.new(1, 0, 0, 45)
             Utility:Animate(owner, self.List, {
                 Size = UDim2.new(1, 0, 0, 0)
             }, 0.1)
