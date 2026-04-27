@@ -1,3 +1,7 @@
+local ok, montserrat = pcall(function()
+    return Enum.Font.Montserrat
+end)
+
 local Themes = {
     Default = {
         BackgroundColor = Color3.fromRGB(18, 18, 18),
@@ -29,7 +33,7 @@ local Themes = {
         SoftOutlineColor = Color3.fromRGB(38, 43, 58),
         TextColor = Color3.fromRGB(244, 247, 255),
         DisabledTextColor = Color3.fromRGB(143, 151, 171),
-        Font = Enum.Font.GothamMedium,
+        Font = ok and montserrat or Enum.Font.GothamMedium,
         CornerRadius = UDim.new(0, 8),
         ElementRadius = UDim.new(0, 6),
         StrokeThickness = 1,
@@ -48,7 +52,7 @@ local Themes = {
         SoftOutlineColor = Color3.fromRGB(218, 225, 235),
         TextColor = Color3.fromRGB(24, 31, 43),
         DisabledTextColor = Color3.fromRGB(97, 108, 128),
-        Font = Enum.Font.GothamMedium,
+        Font = ok and montserrat or Enum.Font.GothamMedium,
         CornerRadius = UDim.new(0, 8),
         ElementRadius = UDim.new(0, 6),
         StrokeThickness = 1,

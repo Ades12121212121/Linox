@@ -2,7 +2,7 @@ local ThemeManager = require(script.Themes.ThemeManager)
 local WindowModule = require(script.Components.Window)
 
 local LinoxUI = {
-    Version = "1.1.0"
+    Version = "1.2.0"
 }
 
 function LinoxUI:CreateWindow(options)

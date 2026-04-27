@@ -10,6 +10,7 @@ function Dropdown.new(groupbox, options)
     local values = options.Values or {}
     local default = options.Default or 1
     local callback = options.Callback or function() end
+    local owner = groupbox.Window
 
     local function resolveDefault()
         if typeof(default) == "number" then
@@ -26,8 +27,18 @@ function Dropdown.new(groupbox, options)
     end
     
     local self = setmetatable({
-        Value = resolveDefault()
+        Value = resolveDefault(),
+        ItemConnections = {}
     }, Dropdown)
+
+    Utility:AddCleanup(owner, function()
+        for _, connection in ipairs(self.ItemConnections) do
+            if connection and connection.Disconnect then
+                connection:Disconnect()
+            end
+        end
+        self.ItemConnections = {}
+    end)
     
     self.Frame = Utility:Create("Frame", {
         Name = dropName .. "Dropdown",
@@ -105,9 +116,16 @@ function Dropdown.new(groupbox, options)
         Utility:ApplyStroke(self.List, theme.OutlineColor)
     end
 
-    Utility:RegisterTheme(self.Frame, refresh)
+    Utility:RegisterThemeFor(owner, self.Frame, refresh)
     
     local function UpdateList()
+        for _, connection in ipairs(self.ItemConnections) do
+            if connection and connection.Disconnect then
+                connection:Disconnect()
+            end
+        end
+        self.ItemConnections = {}
+
         for _, child in pairs(self.List:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
@@ -145,7 +163,7 @@ function Dropdown.new(groupbox, options)
                 ZIndex = 6
             })
             
-            Item.MouseButton1Click:Connect(function()
+            local connection = Item.MouseButton1Click:Connect(function()
                 self.Value = val
                 self.Button.Text = "  " .. tostring(val)
                 Open = false
@@ -155,19 +173,29 @@ function Dropdown.new(groupbox, options)
                 refresh(ThemeManager:GetTheme())
                 callback(val)
             end)
+            table.insert(self.ItemConnections, connection)
         end
         self.List.CanvasSize = UDim2.new(0, 0, 0, self.ListLayout.AbsoluteContentSize.Y)
     end
     
-    self.Button.MouseButton1Click:Connect(function()
+    Utility:Connect(owner, self.Button.MouseButton1Click, function()
         Open = not Open
         if Open then
             UpdateList()
-            self.List.Size = UDim2.new(1, 0, 0, math.min(math.max(#values, 1) * 25, 125))
             self.List.Visible = true
+            Utility:Animate(owner, self.List, {
+                Size = UDim2.new(1, 0, 0, math.min(math.max(#values, 1) * 25, 125))
+            }, 0.12)
             self.Icon.Text = "^"
         else
-            self.List.Visible = false
+            Utility:Animate(owner, self.List, {
+                Size = UDim2.new(1, 0, 0, 0)
+            }, 0.1)
+            task.delay(0.11, function()
+                if not Open then
+                    self.List.Visible = false
+                end
+            end)
             self.Icon.Text = "v"
         end
     end)

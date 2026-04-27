@@ -18,9 +18,13 @@ function Groupbox.new(tab, options)
     
     local self = setmetatable({
         Tab = tab,
+        Window = tab.Window,
     }, Groupbox)
     
-    local parentColumn = (side == "left") and tab.LeftColumn or tab.RightColumn
+    local parentColumn = tab:ResolveZone({
+        Zone = options.Zone,
+        Side = side
+    })
     
     self.Frame = Utility:Create("Frame", {
         Name = groupName,
@@ -64,7 +68,7 @@ function Groupbox.new(tab, options)
         Padding = UDim.new(0, 8)
     })
 
-    Utility:RegisterTheme(self.Frame, function(theme)
+    Utility:RegisterThemeFor(self.Window, self.Frame, function(theme)
         self.Frame.BackgroundColor3 = theme.SurfaceColor
         self.Title.TextColor3 = theme.TextColor
         self.Title.Font = theme.Font
@@ -73,7 +77,7 @@ function Groupbox.new(tab, options)
         Utility:ApplyStroke(self.Frame, theme.SoftOutlineColor)
     end)
     
-    self.Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    Utility:Connect(self.Window, self.Layout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
         self.Frame.Size = UDim2.new(1, 0, 0, self.Layout.AbsoluteContentSize.Y + 40)
         tab:UpdateCanvas()
     end)

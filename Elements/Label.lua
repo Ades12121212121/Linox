@@ -5,6 +5,7 @@ local Label = {}
 Label.__index = Label
 
 function Label.new(groupbox, text)
+    local owner = groupbox.Window
     local self = setmetatable({}, Label)
     
     self.Label = Utility:Create("TextLabel", {
@@ -19,12 +20,12 @@ function Label.new(groupbox, text)
         TextWrapped = true
     })
 
-    Utility:RegisterTheme(self.Label, function(theme)
+    Utility:RegisterThemeFor(owner, self.Label, function(theme)
         self.Label.TextColor3 = theme.TextColor
         self.Label.Font = theme.Font
     end)
 
-    self.Label:GetPropertyChangedSignal("TextBounds"):Connect(function()
+    Utility:Connect(owner, self.Label:GetPropertyChangedSignal("TextBounds"), function()
         self.Label.Size = UDim2.new(1, 0, 0, math.max(18, self.Label.TextBounds.Y + 2))
     end)
     

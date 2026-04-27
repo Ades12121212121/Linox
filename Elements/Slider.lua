@@ -12,6 +12,7 @@ function Slider.new(groupbox, options)
     local max = options.Max or 100
     local rounding = options.Rounding or 0
     local callback = options.Callback or function() end
+    local owner = groupbox.Window
 
     if max < min then
         min, max = max, min
@@ -91,7 +92,9 @@ function Slider.new(groupbox, options)
         self.ValueLabel.Font = theme.Font
         self.Background.BackgroundColor3 = theme.MainColor
         self.Fill.BackgroundColor3 = theme.AccentColor
-        self.Fill.Size = UDim2.new(percent, 0, 1, 0)
+        Utility:Animate(owner, self.Fill, {
+            Size = UDim2.new(percent, 0, 1, 0)
+        }, 0.1)
         self.ValueLabel.Text = tostring(self.Value)
         Utility:ApplyCorners(self.Background, theme.ElementRadius)
         Utility:ApplyCorners(self.Fill, theme.ElementRadius)
@@ -99,7 +102,7 @@ function Slider.new(groupbox, options)
         Utility:ApplyGradient(self.Fill, theme.AccentColor, theme.AccentColor2, 0)
     end
 
-    Utility:RegisterTheme(self.Frame, refresh)
+    Utility:RegisterThemeFor(owner, self.Frame, refresh)
     
     local function updateSlider(input)
         local width = self.Background.AbsoluteSize.X
@@ -109,27 +112,31 @@ function Slider.new(groupbox, options)
     end
     
     local dragging = false
-    self.Background.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    Utility:Connect(owner, self.Background.InputBegan, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             updateSlider(input)
         end
     end)
     
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    Utility:Connect(owner, UserInputService.InputEnded, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    Utility:Connect(owner, UserInputService.InputChanged, function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             updateSlider(input)
         end
     end)
     
     function self:SetValue(val)
         val = rounded(math.clamp(val, min, max))
+        if self.Value == val then
+            return
+        end
+
         self.Value = val
         refresh(ThemeManager:GetTheme())
         callback(val)

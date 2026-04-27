@@ -19,7 +19,7 @@ function ThemeManager:SetTheme(themeName)
         if object == nil or object.Parent == nil then
             self.Watchers[object] = nil
         else
-            callback(theme, themeName)
+            pcall(callback, theme, themeName)
         end
     end
 
@@ -41,12 +41,18 @@ end
 function ThemeManager:Register(object, callback)
     if object and callback then
         self.Watchers[object] = callback
-        callback(self.CurrentTheme, self.CurrentThemeName)
+        pcall(callback, self.CurrentTheme, self.CurrentThemeName)
     end
 end
 
 function ThemeManager:Unregister(object)
     self.Watchers[object] = nil
+end
+
+function ThemeManager:UnregisterMany(objects)
+    for _, object in ipairs(objects or {}) do
+        self.Watchers[object] = nil
+    end
 end
 
 return ThemeManager

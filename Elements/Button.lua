@@ -8,6 +8,7 @@ function Button.new(groupbox, options)
     options = options or {}
     local text = options.Text or "Button"
     local callback = options.Callback or function() end
+    local owner = groupbox.Window
     
     local self = setmetatable({}, Button)
     
@@ -25,41 +26,42 @@ function Button.new(groupbox, options)
     local hovered = false
 
     local function refresh(theme)
-        self.ButtonFrame.BackgroundColor3 = pressed and theme.AccentColor or (hovered and theme.SecondaryColor or theme.MainColor)
+        local background = pressed and theme.AccentColor or (hovered and theme.SecondaryColor or theme.MainColor)
+        Utility:Animate(owner, self.ButtonFrame, { BackgroundColor3 = background }, 0.12)
         self.ButtonFrame.TextColor3 = theme.TextColor
         self.ButtonFrame.Font = theme.Font
         Utility:ApplyCorners(self.ButtonFrame, theme.ElementRadius)
         Utility:ApplyStroke(self.ButtonFrame, pressed and theme.AccentColor2 or theme.SoftOutlineColor)
     end
 
-    Utility:RegisterTheme(self.ButtonFrame, refresh)
+    Utility:RegisterThemeFor(owner, self.ButtonFrame, refresh)
 
-    self.ButtonFrame.MouseEnter:Connect(function()
+    Utility:Connect(owner, self.ButtonFrame.MouseEnter, function()
         hovered = true
         refresh(ThemeManager:GetTheme())
     end)
 
-    self.ButtonFrame.MouseLeave:Connect(function()
+    Utility:Connect(owner, self.ButtonFrame.MouseLeave, function()
         hovered = false
         pressed = false
         refresh(ThemeManager:GetTheme())
     end)
     
-    self.ButtonFrame.InputBegan:Connect(function(input)
+    Utility:Connect(owner, self.ButtonFrame.InputBegan, function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             pressed = true
             refresh(ThemeManager:GetTheme())
         end
     end)
     
-    self.ButtonFrame.InputEnded:Connect(function(input)
+    Utility:Connect(owner, self.ButtonFrame.InputEnded, function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             pressed = false
             refresh(ThemeManager:GetTheme())
         end
     end)
     
-    self.ButtonFrame.MouseButton1Click:Connect(callback)
+    Utility:Connect(owner, self.ButtonFrame.MouseButton1Click, callback)
     
     return self
 end

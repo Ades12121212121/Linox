@@ -9,6 +9,7 @@ function Toggle.new(groupbox, options)
     local toggleName = options.Text or "Toggle"
     local default = options.Default == true
     local callback = options.Callback or function() end
+    local owner = groupbox.Window
     
     local self = setmetatable({
         Value = default
@@ -50,9 +51,13 @@ function Toggle.new(groupbox, options)
     })
 
     local function refresh(theme)
-        self.Checkbox.BackgroundColor3 = self.Value and theme.AccentColor or theme.MainColor
-        self.Knob.BackgroundColor3 = self.Value and theme.TextColor or theme.DisabledTextColor
-        self.Knob.Position = self.Value and UDim2.fromOffset(19, 3) or UDim2.fromOffset(3, 3)
+        Utility:Animate(owner, self.Checkbox, {
+            BackgroundColor3 = self.Value and theme.AccentColor or theme.MainColor
+        }, 0.12)
+        Utility:Animate(owner, self.Knob, {
+            BackgroundColor3 = self.Value and theme.TextColor or theme.DisabledTextColor,
+            Position = self.Value and UDim2.fromOffset(19, 3) or UDim2.fromOffset(3, 3)
+        }, 0.12)
         self.Label.TextColor3 = self.Value and theme.TextColor or theme.DisabledTextColor
         self.Label.Font = theme.Font
         Utility:ApplyCorners(self.Checkbox, UDim.new(0, 9))
@@ -60,9 +65,9 @@ function Toggle.new(groupbox, options)
         Utility:ApplyStroke(self.Checkbox, self.Value and theme.AccentColor2 or theme.SoftOutlineColor)
     end
 
-    Utility:RegisterTheme(self.Frame, refresh)
+    Utility:RegisterThemeFor(owner, self.Frame, refresh)
     
-    self.Checkbox.MouseButton1Click:Connect(function()
+    Utility:Connect(owner, self.Checkbox.MouseButton1Click, function()
         self:SetValue(not self.Value)
     end)
     

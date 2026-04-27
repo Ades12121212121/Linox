@@ -5,44 +5,67 @@ local ThemeManager = require(script.Parent.Parent.Themes.ThemeManager)
 local Keybind = {}
 Keybind.__index = Keybind
 
+local function displayKey(value)
+    if value == nil or value == Enum.KeyCode.Unknown then
+        return "None"
+    end
+
+    return value.Name or tostring(value)
+end
+
+local function inputMatches(input, value)
+    if value == nil or value == Enum.KeyCode.Unknown then
+        return false
+    end
+
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        return input.KeyCode == value
+    end
+
+    return input.UserInputType == value
+end
+
 function Keybind.new(groupbox, options)
     options = options or {}
     local keyName = options.Text or "Keybind"
     local default = options.Default or Enum.KeyCode.Unknown
     local callback = options.Callback or function() end
-    
+    local changedCallback = options.Changed or options.OnChanged or function() end
+    local owner = groupbox.Window
+
     local self = setmetatable({
-        Value = default
+        Value = default,
+        Pressed = false,
     }, Keybind)
-    
+
     self.Frame = Utility:Create("Frame", {
         Name = keyName .. "Keybind",
         Parent = groupbox.ElementContainer,
         Size = UDim2.new(1, 0, 0, 24),
         BackgroundTransparency = 1
     })
-    
+
     self.Label = Utility:Create("TextLabel", {
         Name = "Label",
         Parent = self.Frame,
-        Size = UDim2.new(1, -60, 1, 0),
+        Size = UDim2.new(1, -78, 1, 0),
         BackgroundTransparency = 1,
         Text = keyName,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left
     })
-    
+
     self.Button = Utility:Create("TextButton", {
         Name = "Button",
         Parent = self.Frame,
-        Size = UDim2.new(0, 68, 1, 0),
-        Position = UDim2.new(1, -68, 0, 0),
+        Size = UDim2.new(0, 76, 1, 0),
+        Position = UDim2.new(1, -76, 0, 0),
         BorderSizePixel = 0,
-        Text = (default == Enum.KeyCode.Unknown) and "None" or default.Name,
+        Text = displayKey(default),
         TextSize = 12,
         AutoButtonColor = false
     })
-    
+
     local binding = false
 
     local function refresh(theme)
@@ -55,43 +78,53 @@ function Keybind.new(groupbox, options)
         Utility:ApplyStroke(self.Button, binding and theme.AccentColor or theme.SoftOutlineColor)
     end
 
-    Utility:RegisterTheme(self.Frame, refresh)
-    
-    self.Button.MouseButton1Click:Connect(function()
+    function self:SetValue(value, fireChanged)
+        self.Value = value or Enum.KeyCode.Unknown
+        self.Button.Text = displayKey(self.Value)
+        refresh(ThemeManager:GetTheme())
+
+        if fireChanged then
+            changedCallback(self.Value)
+        end
+    end
+
+    Utility:RegisterThemeFor(owner, self.Frame, refresh)
+
+    Utility:Connect(owner, self.Button.MouseButton1Click, function()
         binding = true
         self.Button.Text = "..."
         refresh(ThemeManager:GetTheme())
     end)
-    
-    UserInputService.InputBegan:Connect(function(input)
+
+    Utility:Connect(owner, UserInputService.InputBegan, function(input, gameProcessed)
         if binding then
             if input.UserInputType == Enum.UserInputType.Keyboard then
-                local key = input.KeyCode
-                if key == Enum.KeyCode.Escape then
-                    key = Enum.KeyCode.Unknown
-                end
-                self.Value = key
-                self.Button.Text = (key == Enum.KeyCode.Unknown) and "None" or key.Name
                 binding = false
-                refresh(ThemeManager:GetTheme())
-                callback(key)
+                self.Pressed = false
+                self:SetValue(input.KeyCode == Enum.KeyCode.Escape and Enum.KeyCode.Unknown or input.KeyCode, true)
             elseif input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
-                local key = input.UserInputType
-                self.Value = key
-                self.Button.Text = key.Name
                 binding = false
-                refresh(ThemeManager:GetTheme())
-                callback(key)
+                self.Pressed = false
+                self:SetValue(input.UserInputType, true)
             end
-        elseif self.Value == Enum.KeyCode.Unknown then
+
             return
-        elseif input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == self.Value then
-            callback(self.Value)
-        elseif (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2) and input.UserInputType == self.Value then
-            callback(self.Value)
+        end
+
+        if gameProcessed or self.Pressed or not inputMatches(input, self.Value) then
+            return
+        end
+
+        self.Pressed = true
+        callback(self.Value)
+    end)
+
+    Utility:Connect(owner, UserInputService.InputEnded, function(input)
+        if inputMatches(input, self.Value) then
+            self.Pressed = false
         end
     end)
-    
+
     return self
 end
 
